@@ -1,65 +1,88 @@
 PRAGMA foreign_keys = ON;
 
--- users
+-- Users table
 CREATE TABLE users (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     username        TEXT NOT NULL UNIQUE,
     password_hash   BLOB NOT NULL,
     password_salt   BLOB NOT NULL,
+    created_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
 );
 
--- user meal log
-CREATE TABLE user_meal_log (
+-- Session tokens for "remember me" functionality
+CREATE TABLE sessions (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id         INTEGER NOT NULL,
-    meal_id         INTEGER NOT NULL,
-    logged_at       TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-    FOREIGN KEY (meal_id) REFERENCES meals(id) ON DELETE CASCADE
+    token           TEXT NOT NULL UNIQUE,
+    expires_at      TEXT NOT NULL,
+    created_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
--- foods
+CREATE INDEX idx_sessions_token ON sessions(token);
+CREATE INDEX idx_sessions_user_id ON sessions(user_id);
+
+-- Foods table (global, shared across all users)
 CREATE TABLE foods (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
-    name            TEXT NOT NULL,
-    calories        INTEGER NOT NULL, -- calories per unit (e.g., per serving)
+    name            TEXT NOT NULL UNIQUE,
+    calories        INTEGER NOT NULL,
+    created_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
 );
 
--- meals
+CREATE INDEX idx_foods_name ON foods(name);
+
+-- Meals table (global templates, shared across all users)
+-- Only meals with a name are stored here for reuse
 CREATE TABLE meals (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
-    name            TEXT,
+    name            TEXT NOT NULL UNIQUE,
     description     TEXT,
+    created_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
 );
 
--- Join table: many-to-many between meals and foods
+CREATE INDEX idx_meals_name ON meals(name);
+
+-- Meal items: foods that make up a meal template
 CREATE TABLE meal_items (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
     meal_id         INTEGER NOT NULL,
     food_id         INTEGER NOT NULL,
-    PRIMARY KEY (meal_id, food_id),
+    quantity        REAL NOT NULL DEFAULT 1.0,
     FOREIGN KEY (meal_id) REFERENCES meals(id) ON DELETE CASCADE,
     FOREIGN KEY (food_id) REFERENCES foods(id) ON DELETE RESTRICT
 );
 
+CREATE INDEX idx_meal_items_meal_id ON meal_items(meal_id);
 CREATE INDEX idx_meal_items_food_id ON meal_items(food_id);
 
-SELECT
-    m.id,
-    m.name,
-    SUM(f.calories * mi.quantity) AS total_calories
-FROM meals AS m
-JOIN meal_items AS mi ON mi.meal_id = m.id
-JOIN foods AS f ON f.id = mi.food_id
-WHERE m.id = ?
-GROUP BY m.id, m.name;
+-- User daily meal log
+-- Tracks what each user ate for each meal type on each day
+-- meal_type: 'breakfast', 'morning_snack', 'lunch', 'afternoon_snack', 'dinner', 'evening_snack'
+CREATE TABLE user_meal_log (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id         INTEGER NOT NULL,
+    meal_date       TEXT NOT NULL,
+    meal_type       TEXT NOT NULL CHECK (meal_type IN ('breakfast', 'morning_snack', 'lunch', 'afternoon_snack', 'dinner', 'evening_snack')),
+    meal_id         INTEGER,
+    created_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+    updated_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (meal_id) REFERENCES meals(id) ON DELETE SET NULL,
+    UNIQUE (user_id, meal_date, meal_type)
+);
 
+CREATE INDEX idx_user_meal_log_user_date ON user_meal_log(user_id, meal_date);
 
-SELECT
-    m.user_id,
-    date(m.eaten_at) AS day,
-    SUM(f.calories * mi.quantity) AS total_calories
-FROM meals AS m
-JOIN meal_items AS mi ON mi.meal_id = m.id
-JOIN foods AS f ON f.id = mi.food_id
-WHERE m.user_id = ?
-GROUP BY m.user_id, date(m.eaten_at);
+-- User meal log items: individual food items for a user's logged meal
+-- Allows users to log food items directly without creating a named meal
+CREATE TABLE user_meal_log_items (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    log_id          INTEGER NOT NULL,
+    food_id         INTEGER NOT NULL,
+    quantity        REAL NOT NULL DEFAULT 1.0,
+    FOREIGN KEY (log_id) REFERENCES user_meal_log(id) ON DELETE CASCADE,
+    FOREIGN KEY (food_id) REFERENCES foods(id) ON DELETE RESTRICT
+);
+
+CREATE INDEX idx_user_meal_log_items_log_id ON user_meal_log_items(log_id);
