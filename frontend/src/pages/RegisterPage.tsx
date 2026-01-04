@@ -5,8 +5,6 @@ import { useAuth } from '../context/AuthContext';
 export function RegisterPage() {
   const { user, register, loading } = useAuth();
   const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -25,16 +23,10 @@ export function RegisterPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-
-    if (password !== confirmPassword) {
-      setError('Passwords do not match');
-      return;
-    }
-
     setSubmitting(true);
 
     try {
-      await register(username, password);
+      await register(username);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Registration failed');
     } finally {
@@ -62,7 +54,7 @@ export function RegisterPage() {
 
             <div>
               <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
-                Username
+                Your Name
               </label>
               <input
                 id="username"
@@ -71,40 +63,8 @@ export function RegisterPage() {
                 onChange={(e) => setUsername(e.target.value)}
                 className="input"
                 required
-                minLength={3}
                 autoComplete="username"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-                Password
-              </label>
-              <input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="input"
-                required
-                minLength={6}
-                autoComplete="new-password"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-1">
-                Confirm Password
-              </label>
-              <input
-                id="confirmPassword"
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                className="input"
-                required
-                minLength={6}
-                autoComplete="new-password"
+                placeholder="Enter your name"
               />
             </div>
 

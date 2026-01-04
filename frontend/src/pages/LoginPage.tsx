@@ -5,8 +5,6 @@ import { useAuth } from '../context/AuthContext';
 export function LoginPage() {
   const { user, login, loading } = useAuth();
   const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -28,7 +26,7 @@ export function LoginPage() {
     setSubmitting(true);
 
     try {
-      await login(username, password, rememberMe);
+      await login(username);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
     } finally {
@@ -56,7 +54,7 @@ export function LoginPage() {
 
             <div>
               <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
-                Username
+                Your Name
               </label>
               <input
                 id="username"
@@ -66,35 +64,8 @@ export function LoginPage() {
                 className="input"
                 required
                 autoComplete="username"
+                placeholder="Enter your name"
               />
-            </div>
-
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-                Password
-              </label>
-              <input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="input"
-                required
-                autoComplete="current-password"
-              />
-            </div>
-
-            <div className="flex items-center">
-              <input
-                id="remember"
-                type="checkbox"
-                checked={rememberMe}
-                onChange={(e) => setRememberMe(e.target.checked)}
-                className="h-4 w-4 text-primary-600 rounded border-gray-300 focus:ring-primary-500"
-              />
-              <label htmlFor="remember" className="ml-2 text-sm text-gray-600">
-                Remember me
-              </label>
             </div>
 
             <button

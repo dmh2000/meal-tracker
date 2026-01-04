@@ -2,12 +2,13 @@
 """Meal Tracker API Server."""
 
 import argparse
+import logging
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 
-from flask import Flask
+from flask import Flask, request
 from flask_cors import CORS
 
 from database import init_db
@@ -15,6 +16,14 @@ from routes.auth_routes import auth_bp
 from routes.food_routes import food_bp
 from routes.meal_routes import meal_bp
 from routes.log_routes import log_bp
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s [%(levelname)s] %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
+logger = logging.getLogger(__name__)
 
 
 def create_app() -> Flask:
@@ -25,6 +34,25 @@ def create_app() -> Flask:
 
     init_db()
 
+    # Request logging middleware
+    @app.before_request
+    def log_request():
+        logger.info(f">>> {request.method} {request.path} from {request.remote_addr}")
+        if request.content_type and 'json' in request.content_type:
+            try:
+                data = request.get_json(silent=True)
+                if data:
+                    # Don't log sensitive data
+                    safe_data = {k: v for k, v in data.items() if k not in ['password']}
+                    logger.info(f"    Request body: {safe_data}")
+            except Exception:
+                pass
+
+    @app.after_request
+    def log_response(response):
+        logger.info(f"<<< {request.method} {request.path} -> {response.status_code}")
+        return response
+
     app.register_blueprint(auth_bp)
     app.register_blueprint(food_bp)
     app.register_blueprint(meal_bp)
@@ -33,6 +61,13 @@ def create_app() -> Flask:
     @app.route("/api/health", methods=["GET"])
     def health():
         return {"status": "ok"}
+
+    # Log registered routes
+    logger.info("Registered routes:")
+    for rule in app.url_map.iter_rules():
+        methods = ','.join(sorted(rule.methods - {'HEAD', 'OPTIONS'}))
+        if methods:
+            logger.info(f"  {methods:20s} {rule.rule}")
 
     return app
 
@@ -46,7 +81,7 @@ def main():
     args = parser.parse_args()
 
     app = create_app()
-    print(f"Starting API server on http://{args.host}:{args.port}")
+    logger.info(f"Starting API server on http://{args.host}:{args.port}")
     app.run(host=args.host, port=args.port, debug=args.debug)
 
 

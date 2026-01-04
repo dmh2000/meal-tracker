@@ -25,16 +25,16 @@ async function request<T>(
 
 // Auth
 export const auth = {
-  register: (username: string, password: string) =>
+  register: (username: string) =>
     request<User>('/auth/register', {
       method: 'POST',
-      body: JSON.stringify({ username, password }),
+      body: JSON.stringify({ username }),
     }),
 
-  login: (username: string, password: string, remember_me: boolean = false) =>
+  login: (username: string) =>
     request<User>('/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ username, password, remember_me }),
+      body: JSON.stringify({ username }),
     }),
 
   logout: () =>

@@ -1,29 +1,11 @@
-import os
 import secrets
 import hashlib
 from datetime import datetime, timedelta, timezone
 from functools import wraps
 
-import bcrypt
-import jwt
 from flask import request, jsonify, g
 
 from database import query_db, execute_db
-
-SECRET_KEY = os.environ.get("JWT_SECRET_KEY", secrets.token_hex(32))
-ALGORITHM = "HS256"
-
-
-def hash_password(password: str) -> tuple[bytes, bytes]:
-    """Hash a password with bcrypt and return (hash, salt)."""
-    salt = bcrypt.gensalt(rounds=12)
-    password_hash = bcrypt.hashpw(password.encode("utf-8"), salt)
-    return password_hash, salt
-
-
-def verify_password(password: str, password_hash: bytes) -> bool:
-    """Verify a password against a hash."""
-    return bcrypt.checkpw(password.encode("utf-8"), password_hash)
 
 
 def create_session_token(user_id: int, remember_me: bool = False) -> str:

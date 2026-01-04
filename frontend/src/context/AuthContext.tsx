@@ -5,8 +5,8 @@ import { auth } from '../services/api';
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  login: (username: string, password: string, rememberMe: boolean) => Promise<void>;
-  register: (username: string, password: string) => Promise<void>;
+  login: (username: string) => Promise<void>;
+  register: (username: string) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -23,13 +23,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .finally(() => setLoading(false));
   }, []);
 
-  const login = useCallback(async (username: string, password: string, rememberMe: boolean) => {
-    const user = await auth.login(username, password, rememberMe);
+  const login = useCallback(async (username: string) => {
+    const user = await auth.login(username);
     setUser(user);
   }, []);
 
-  const register = useCallback(async (username: string, password: string) => {
-    const user = await auth.register(username, password);
+  const register = useCallback(async (username: string) => {
+    const user = await auth.register(username);
     setUser(user);
   }, []);
 

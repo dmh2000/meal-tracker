@@ -145,10 +145,11 @@ def create_or_update_log():
     if not data:
         return jsonify({"error": "Request body required"}), 400
 
-    meal_type = data.get("meal_type", "").strip()
-    meal_date = data.get("meal_date", date.today().isoformat())
-    meal_name = data.get("meal_name", "").strip() or None
-    items = data.get("items", [])
+    meal_type = (data.get("meal_type") or "").strip()
+    meal_date = data.get("meal_date") or date.today().isoformat()
+    meal_name_raw = data.get("meal_name")
+    meal_name = meal_name_raw.strip() if meal_name_raw else None
+    items = data.get("items") or []
 
     if meal_type not in MEAL_TYPES:
         return jsonify({"error": f"Invalid meal type. Must be one of: {', '.join(MEAL_TYPES)}"}), 400
