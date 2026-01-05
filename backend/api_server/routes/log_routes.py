@@ -1,4 +1,5 @@
 from datetime import datetime, date
+from zoneinfo import ZoneInfo
 from flask import Blueprint, request, jsonify, g
 
 from auth import login_required
@@ -6,7 +7,13 @@ from database import query_db, execute_db, get_db
 
 log_bp = Blueprint("log", __name__, url_prefix="/api/log")
 
+PACIFIC_TZ = ZoneInfo("America/Los_Angeles")
 MEAL_TYPES = ["breakfast", "morning_snack", "lunch", "afternoon_snack", "dinner", "evening_snack"]
+
+
+def get_pacific_today() -> date:
+    """Get today's date in Pacific Time."""
+    return datetime.now(PACIFIC_TZ).date()
 
 
 def get_log_entry_with_items(log_id: int) -> dict | None:
@@ -53,7 +60,7 @@ def get_log_entry_with_items(log_id: int) -> dict | None:
 @login_required
 def get_daily_log():
     """Get user's meal log for a specific date."""
-    date_str = request.args.get("date", date.today().isoformat())
+    date_str = request.args.get("date", get_pacific_today().isoformat())
 
     try:
         datetime.strptime(date_str, "%Y-%m-%d")
@@ -146,7 +153,7 @@ def create_or_update_log():
         return jsonify({"error": "Request body required"}), 400
 
     meal_type = (data.get("meal_type") or "").strip()
-    meal_date = data.get("meal_date") or date.today().isoformat()
+    meal_date = data.get("meal_date") or get_pacific_today().isoformat()
     meal_name_raw = data.get("meal_name")
     meal_name = meal_name_raw.strip() if meal_name_raw else None
     items = data.get("items") or []
@@ -159,7 +166,7 @@ def create_or_update_log():
     except ValueError:
         return jsonify({"error": "Invalid date format. Use YYYY-MM-DD"}), 400
 
-    if parsed_date != date.today():
+    if parsed_date != get_pacific_today():
         return jsonify({"error": "Can only log meals for the current date"}), 400
 
     user_id = g.user["id"]
@@ -201,7 +208,7 @@ def create_or_update_log():
 
             conn.execute(
                 "UPDATE user_meal_log SET meal_id = ?, updated_at = ? WHERE id = ?",
-                (meal_id, datetime.utcnow().isoformat(), log_id)
+                (meal_id, datetime.now(PACIFIC_TZ).isoformat(), log_id)
             )
 
             conn.execute("DELETE FROM user_meal_log_items WHERE log_id = ?", (log_id,))
@@ -244,7 +251,7 @@ def delete_log_entry(log_id: int):
     if log["user_id"] != g.user["id"]:
         return jsonify({"error": "Not authorized"}), 403
 
-    if log["meal_date"] != date.today().isoformat():
+    if log["meal_date"] != get_pacific_today().isoformat():
         return jsonify({"error": "Can only delete meals for the current date"}), 403
 
     execute_db("DELETE FROM user_meal_log WHERE id = ?", (log_id,))

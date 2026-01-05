@@ -5,6 +5,7 @@ import { Spinner } from '../components/ui/Spinner';
 import { log, foods, meals } from '../services/api';
 import type { MealType, Food, MealItem, MealTemplate } from '../types';
 import { MEAL_TYPE_LABELS, MEAL_TYPES } from '../types';
+import { getPacificToday } from '../utils/date';
 
 interface LocalItem {
   food_id: number;
@@ -35,7 +36,7 @@ export function MealPage() {
   const [templates, setTemplates] = useState<MealTemplate[]>([]);
   const [showTemplates, setShowTemplates] = useState(false);
 
-  const today = new Date().toISOString().split('T')[0]!;
+  const today = getPacificToday();
 
   // Validate meal type
   useEffect(() => {

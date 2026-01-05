@@ -5,13 +5,14 @@ import { Spinner } from '../components/ui/Spinner';
 import { log } from '../services/api';
 import type { DailyLog, MealType } from '../types';
 import { MEAL_TYPES } from '../types';
+import { getPacificToday } from '../utils/date';
 
 export function DashboardPage() {
   const [dailyLog, setDailyLog] = useState<DailyLog | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const today = new Date().toISOString().split('T')[0]!;
+  const today = getPacificToday();
 
   useEffect(() => {
     setLoading(true);
