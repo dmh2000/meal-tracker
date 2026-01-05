@@ -123,6 +123,27 @@ def get_daily_log():
     })
 
 
+@log_bp.route("/dates", methods=["GET"])
+@login_required
+def get_available_dates():
+    """Get list of dates where the user has meal data."""
+    user_id = g.user["id"]
+
+    dates = query_db(
+        """
+        SELECT DISTINCT meal_date
+        FROM user_meal_log
+        WHERE user_id = ?
+        ORDER BY meal_date ASC
+        """,
+        (user_id,)
+    )
+
+    return jsonify({
+        "dates": [d["meal_date"] for d in dates]
+    })
+
+
 @log_bp.route("/<int:log_id>", methods=["GET"])
 @login_required
 def get_log_entry(log_id: int):
@@ -166,8 +187,7 @@ def create_or_update_log():
     except ValueError:
         return jsonify({"error": "Invalid date format. Use YYYY-MM-DD"}), 400
 
-    if parsed_date != get_pacific_today():
-        return jsonify({"error": "Can only log meals for the current date"}), 400
+    # Allow logging meals for any date (removed current-date-only restriction)
 
     user_id = g.user["id"]
     meal_id = None
@@ -251,8 +271,7 @@ def delete_log_entry(log_id: int):
     if log["user_id"] != g.user["id"]:
         return jsonify({"error": "Not authorized"}), 403
 
-    if log["meal_date"] != get_pacific_today().isoformat():
-        return jsonify({"error": "Can only delete meals for the current date"}), 403
+    # Allow deleting meals for any date (removed current-date-only restriction)
 
     execute_db("DELETE FROM user_meal_log WHERE id = ?", (log_id,))
 

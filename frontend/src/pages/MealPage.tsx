@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { Layout } from '../components/layout/Layout';
 import { Spinner } from '../components/ui/Spinner';
 import { log, foods, meals } from '../services/api';
@@ -16,8 +16,14 @@ interface LocalItem {
 
 export function MealPage() {
   const { type } = useParams<{ type: string }>();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const mealType = type as MealType;
+
+  // Get date from URL params or default to today
+  const today = getPacificToday();
+  const mealDate = searchParams.get('date') || today;
+  const isViewingPast = mealDate < today;
 
   const [items, setItems] = useState<LocalItem[]>([]);
   const [mealName, setMealName] = useState('');
@@ -36,8 +42,6 @@ export function MealPage() {
   const [templates, setTemplates] = useState<MealTemplate[]>([]);
   const [showTemplates, setShowTemplates] = useState(false);
 
-  const today = getPacificToday();
-
   // Validate meal type
   useEffect(() => {
     if (!MEAL_TYPES.includes(mealType)) {
@@ -49,9 +53,14 @@ export function MealPage() {
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
+      // Reset state before loading new data for a different date
+      setItems([]);
+      setMealName('');
+      setError('');
+
       try {
         const [dailyLog, foodList, templateList] = await Promise.all([
-          log.getDaily(today),
+          log.getDaily(mealDate),
           foods.getAll(),
           meals.getAll(),
         ]);
@@ -67,9 +76,9 @@ export function MealPage() {
             calories: i.calories,
             quantity: i.quantity,
           })));
-          if (entry.meal_name) {
-            setMealName(entry.meal_name);
-          }
+        }
+        if (entry?.meal_name) {
+          setMealName(entry.meal_name);
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load data');
@@ -79,7 +88,7 @@ export function MealPage() {
     };
 
     loadData();
-  }, [mealType, today]);
+  }, [mealType, mealDate]);
 
   const totalCalories = items.reduce((sum, item) => sum + item.calories * item.quantity, 0);
 
@@ -142,11 +151,12 @@ export function MealPage() {
     try {
       await log.save(
         mealType,
-        today,
+        mealDate,
         mealName.trim() || null,
         items.map((i) => ({ food_id: i.food_id, quantity: i.quantity }))
       );
-      navigate('/');
+      // Navigate back with date context preserved
+      navigate(isViewingPast ? `/?date=${mealDate}` : '/');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save');
     } finally {
@@ -169,7 +179,10 @@ export function MealPage() {
       <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center gap-4">
-          <Link to="/" className="text-gray-400 hover:text-gray-600 transition-colors">
+          <Link
+            to={isViewingPast ? `/?date=${mealDate}` : '/'}
+            className="text-gray-400 hover:text-gray-600 transition-colors"
+          >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
@@ -181,6 +194,17 @@ export function MealPage() {
             <p className="text-sm text-gray-500">{totalCalories} calories</p>
           </div>
         </div>
+
+        {/* Date indicator for past days */}
+        {isViewingPast && (
+          <div className="bg-amber-50 text-amber-700 px-4 py-2 rounded-lg text-sm text-center">
+            Editing meal for {new Date(mealDate + 'T00:00:00').toLocaleDateString('en-US', {
+              weekday: 'long',
+              month: 'long',
+              day: 'numeric',
+            })}
+          </div>
+        )}
 
         {/* Error */}
         {error && (

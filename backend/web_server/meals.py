@@ -24,7 +24,10 @@ def create_app(static_folder: str = "static", api_url: str = "http://localhost:5
     @app.route("/api/<path:path>", methods=["GET", "POST", "PUT", "DELETE", "PATCH"])
     def proxy_api(path):
         """Proxy all /api/* requests to the API server."""
+        # Include query string in the proxied URL
         url = f"{api_url}/api/{path}"
+        if request.query_string:
+            url = f"{url}?{request.query_string.decode('utf-8')}"
         logger.info(f"Proxying {request.method} /api/{path} -> {url}")
 
         # Forward the request

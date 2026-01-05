@@ -73,6 +73,8 @@ export const meals = {
 export const log = {
   getDaily: (date: string) => request<DailyLog>(`/log?date=${date}`),
 
+  getDates: () => request<{ dates: string[] }>('/log/dates'),
+
   get: (id: number) => request<LogEntry>(`/log/${id}`),
 
   save: (

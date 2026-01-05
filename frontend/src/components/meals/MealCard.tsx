@@ -5,6 +5,7 @@ import { MEAL_TYPE_LABELS } from '../../types';
 interface MealCardProps {
   mealType: MealType;
   entry: MealLogEntry;
+  date: string;
 }
 
 const mealIcons: Record<MealType, string> = {
@@ -16,12 +17,12 @@ const mealIcons: Record<MealType, string> = {
   evening_snack: '🌙',
 };
 
-export function MealCard({ mealType, entry }: MealCardProps) {
+export function MealCard({ mealType, entry, date }: MealCardProps) {
   const hasItems = entry.items.length > 0;
 
   return (
     <Link
-      to={`/meal/${mealType}`}
+      to={`/meal/${mealType}?date=${date}`}
       className="card-hover block p-4 active:scale-[0.98]"
     >
       <div className="flex items-center gap-3">
